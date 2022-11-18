@@ -145,6 +145,10 @@ namespace dae {
 	Matrix Matrix::CreateLookAtLH(const Vector3& origin, const Vector3& forward, const Vector3& up)
 	{
 		//TODO W1
+		//create cross product between up and forward
+		//use the origin to create an onb matrix
+
+
 
 		return {};
 	}
