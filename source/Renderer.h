@@ -34,6 +34,14 @@ namespace dae
 		bool SaveBufferToImage() const;
 
 	private:
+		enum class LightMode
+		{
+			Combined,
+			Diffuse,
+			Specular,
+			ObservedArea
+		};
+
 		SDL_Window* m_pWindow{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
@@ -47,7 +55,21 @@ namespace dae
 		int m_Width{};
 		int m_Height{};
 
+		std::vector<Mesh> m_Meshes;
+
+		std::vector<Vertex> m_Vertices;
+		std::vector<uint32_t> m_Indices;
+
 		Texture* m_pTexture;
+
+		Texture* m_pVehicleDiffuse;
+		Texture* m_pVehicleNormal;
+		Texture* m_pVehicleGlossy;
+		Texture* m_pVehicleSpecular;
+
+		Matrix m_RotationMatrix;
+
+		LightMode m_Lightmode;
 
 		void Render_W1_Gradient();
 		void Render_W1_Part1();
@@ -60,6 +82,12 @@ namespace dae
 		void Render_W2_TriangleList();
 		void Render_W2_Textures();
 		void Render_W2_DepthInterpolation();
+
+		void Render_W3_Projection();
+		void Render_W3_Tuktuk();
+		void Render_W3_Vehicle();
+
+		ColorRGB RenderPixelInfo(const Vertex_Out& vertexOut);
 
 		//Function that transforms the vertices from the mesh from World space to Screen space
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const; //W1 Version
