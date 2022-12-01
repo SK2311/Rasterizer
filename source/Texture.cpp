@@ -32,15 +32,23 @@ namespace dae
 	{
 		//TODO
 		//Sample the correct texel for the given uv
-		int x{ int(uv.x * m_pSurface->w) };
-		int y{ int(uv.y * m_pSurface->h) };
-		Vector2 pixel{ (float)x, (float)y };
+		SDL_Color rgb{};
+		//if (uv.x > 1  uv.x < -1)
+		//    return {};
+		//if (uv.y > 1  uv.y < -1)
+		//    return {};
 
-		Uint8 r, g, b;
+		//Vector2 uvNormalized = uv.Normalized();
+		Uint32 u = uv.x * m_pSurface->w;
+		Uint32 v = uv.y * m_pSurface->h;
 
-		SDL_GetRGB(m_pSurfacePixels[x + (y * m_pSurface->w)], m_pSurface->format, &r, &g, &b);
+		//Sample the correct data for the given uv
+		Uint32 index{ u + v * static_cast<Uint32>(m_pSurface->w) };
+		Uint32 p = m_pSurfacePixels[index];
+		SDL_GetRGB(p, m_pSurface->format, &rgb.r, &rgb.g, &rgb.b);
 
-		ColorRGB finalColour{ r / 255.0f, g / 255.0f, b / 255.0f };
-		return finalColour;
+		//change color from range 0,255 to 0,1
+		ColorRGB rgb2{ rgb.r, rgb.g, rgb.b };
+		return rgb2 / 255;
 	}
 }

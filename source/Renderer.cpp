@@ -8,6 +8,7 @@
 #include "Matrix.h"
 #include "Texture.h"
 #include "Utils.h"
+#include <iostream>
 
 using namespace dae;
 
@@ -16,7 +17,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	, m_Vertices{}
 	, m_Indices{}
 	, m_RotationMatrix{}
-	, m_Lightmode{LightMode::Combined}
+	, m_Lightmode{ LightMode::Combined }
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -29,15 +30,20 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,.0f,-10.f }, (float)m_Width / (float)m_Height);
+	m_Camera.Initialize(60.f, { .0f,5.0f,-30.f }, (float)m_Width / (float)m_Height);
 
 	m_pTexture = Texture::LoadFromFile("Resources/tuktuk.png");
 
-	Mesh tuktuk{};
+	/*Mesh tuktuk{};
 
-	bool loadedMesh{ Utils::ParseOBJ("Resources/tuktuk.obj", tuktuk.vertices, tuktuk.indices) };
+	bool loadedMesh{ Utils::ParseOBJ("Resources/tuktuk.obj", m_Vertices, m_Indices) };
 
-	//m_Meshes.push_back(tuktuk);
+	tuktuk.vertices = m_Vertices;
+	tuktuk.indices = m_Indices;
+
+	tuktuk.primitiveTopology = PrimitiveTopology::TriangleList;
+
+	m_Meshes.push_back(tuktuk);*/
 
 	Mesh vehicle{};
 
@@ -66,7 +72,7 @@ Renderer::~Renderer()
 {
 	delete[] m_pDepthBufferPixels;
 
-	if(m_pTexture)
+	if (m_pTexture)
 		delete m_pTexture;
 
 	if (m_pVehicleDiffuse)
@@ -370,7 +376,7 @@ void dae::Renderer::Render_W1_Part5()
 	std::vector<Vertex> vertices_world
 	{
 		//Triangle 0
-		{{0.0f, 2.0f, 0.0f}, {1,0,0}},
+		{{0.0f, 2.0f, 5.0f}, {1,0,0}},
 		{{1.5f, -1.0f, 0.0f}, {1,0,0}},
 		{{-1.5f, -1.0f, 0.0f}, {1,0,0}},
 
@@ -554,8 +560,8 @@ void dae::Renderer::Render_W2_TriangleStrip()
 
 			if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
 			{
-				if (mesh.indices[i] == mesh.indices[i + 1] || 
-					mesh.indices[i] == mesh.indices[i + 2] || 
+				if (mesh.indices[i] == mesh.indices[i + 1] ||
+					mesh.indices[i] == mesh.indices[i + 2] ||
 					mesh.indices[i + 1] == mesh.indices[i + 2])
 				{
 					continue;
@@ -993,7 +999,7 @@ void dae::Renderer::Render_W2_Textures()
 
 							m_pDepthBufferPixels[pixelZIndex] = z;
 							//finalColor = { triangle[0].color * w0 + triangle[1].color * w1 + triangle[2].color * w2 };
-							Vector2 interpolatedUv =  triangle[0].uv * w0 + triangle[1].uv * w1 + triangle[2].uv * w2;
+							Vector2 interpolatedUv = triangle[0].uv * w0 + triangle[1].uv * w1 + triangle[2].uv * w2;
 
 							finalColor = texture->Sample(interpolatedUv);
 
@@ -1246,9 +1252,9 @@ void dae::Renderer::Render_W3_Projection()
 			}
 
 			//get the raster space vertices of the triangle
-			v0 = {triangle[0].position.x, triangle[0].position.y };
-			v1 = {triangle[1].position.x, triangle[1].position.y };
-			v2 = {triangle[2].position.x, triangle[2].position.y };
+			v0 = { triangle[0].position.x, triangle[0].position.y };
+			v1 = { triangle[1].position.x, triangle[1].position.y };
+			v2 = { triangle[2].position.x, triangle[2].position.y };
 
 			float areaOfParallelogram{ Vector2::Cross((v1 - v0), (v2 - v0)) };
 
@@ -1329,7 +1335,7 @@ void dae::Renderer::Render_W3_Projection()
 									static_cast<uint8_t>(finalColor.b * 255));
 							}
 						}
-						
+
 					}
 				}
 			}
@@ -1343,166 +1349,13 @@ void dae::Renderer::Render_W3_Tuktuk()
 
 	VertexTransformationFunction(m_Meshes);
 
-
-	ColorRGB finalColor{ 0.f, 0.f, 0.f };
-
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
-	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
-
-	//RENDER LOGIC
-	for (Mesh& mesh : m_Meshes)
-	{
-		for (int i = 0; i < mesh.indices.size() - 2; ++i)
-		{
-			std::vector<Vertex_Out> triangle{
-					mesh.vertices_out[mesh.indices[i]],
-					mesh.vertices_out[mesh.indices[i + 1]],
-					mesh.vertices_out[mesh.indices[i + 2]]
-			};
-
-			if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
-			{
-				if (mesh.indices[i] == mesh.indices[i + 1] ||
-					mesh.indices[i] == mesh.indices[i + 2] ||
-					mesh.indices[i + 1] == mesh.indices[i + 2])
-				{
-					continue;
-				}
-
-				if (i % 2 != 0)
-				{
-					//Odd triangle
-					auto tempIdx1 = triangle[1];
-					triangle[1] = triangle[2];
-					triangle[2] = tempIdx1;
-				}
-			}
-
-			//frustum check
-			if (triangle[0].position.x < -1.0f || triangle[0].position.x > 1.0f ||
-				triangle[1].position.x < -1.0f || triangle[1].position.x > 1.0f ||
-				triangle[2].position.x < -1.0f || triangle[2].position.x > 1.0f)
-			{
-				continue;
-			}
-			if (triangle[0].position.y < -1.0f || triangle[0].position.y > 1.0f ||
-				triangle[1].position.y < -1.0f || triangle[1].position.y > 1.0f ||
-				triangle[2].position.y < -1.0f || triangle[2].position.y > 1.0f)
-			{
-				continue;
-			}
-
-			//convert xy coordinates into raster space
-			for (auto& vertex : triangle)
-			{
-				vertex.position.x = ((vertex.position.x + 1) / 2) * (float)m_Width;
-				vertex.position.y = ((1 - vertex.position.y) / 2) * (float)m_Height;
-			}
-
-			//get the raster space vertices of the triangle
-			Vector2 v0{ triangle[0].position.x, triangle[0].position.y };
-			Vector2 v1{ triangle[1].position.x, triangle[1].position.y };
-			Vector2 v2{ triangle[2].position.x, triangle[2].position.y };
-
-			float areaOfParallelogram{ Vector2::Cross((v1 - v0), (v2 - v0)) };
-
-			int smallestX = static_cast<int>(std::min(v0.x, std::min(v1.x, v2.x)));
-			int smallestY = static_cast<int>(std::min(v0.y, std::min(v1.y, v2.y)));
-
-			smallestX = Clamp(smallestX, 0, m_Width);
-			smallestY = Clamp(smallestY, 0, m_Height);
-
-			int biggestX = static_cast<int>(std::max(v0.x, std::max(v1.x, v2.x)));
-			int biggestY = static_cast<int>(std::max(v0.y, std::max(v1.y, v2.y)));
-
-			biggestX = Clamp(biggestX, 0, m_Width);
-			biggestY = Clamp(biggestY, 0, m_Height);
-
-
-			for (int py{ smallestY }; py < biggestY; ++py)
-			{
-				for (int px{ smallestX }; px < biggestX; ++px)
-				{
-
-					const Vector2 pixel{ (float)px, (float)py };
-
-					const float w0{ Vector2::Cross((v2 - v1), (pixel - v1)) / areaOfParallelogram };
-					const float w1{ Vector2::Cross((v0 - v2), (pixel - v2)) / areaOfParallelogram };
-					const float w2{ Vector2::Cross((v1 - v0), (pixel - v0)) / areaOfParallelogram };
-
-					const Vector2 pInsideTriangle{ w0 * v0 + w1 * v1 + w2 * v2 };
-
-					if (IsPointInTriangle(triangle, pInsideTriangle))
-					{
-						const float depthV0{ triangle[0].position.z };
-						const float depthV1{ triangle[1].position.z };
-						const float depthV2{ triangle[2].position.z };
-
-						const float z = depthV0 * w0 + depthV1 * w1 + depthV2 * w2;
-
-						const int pixelZIndex = py * m_Width + px;
-
-						const float v0Calculation{ (1 / depthV0) * w0 };
-						const float v1Calculation{ (1 / depthV1) * w1 };
-						const float v2Calculation{ (1 / depthV2) * w2 };
-						const float zInterpolated{ 1 / (v0Calculation + v1Calculation + v2Calculation) };
-
-						//is the interpolated value in the range [0,1]
-						if (zInterpolated > 0 && zInterpolated < 1)
-						{
-							//is this value closer than the stored value
-							if (z < m_pDepthBufferPixels[pixelZIndex])
-							{
-								m_pDepthBufferPixels[pixelZIndex] = z;
-
-								const float depthV0W{ triangle[0].position.w };
-								const float depthV1W{ triangle[1].position.w };
-								const float depthV2W{ triangle[2].position.w };
-
-								const float v0CalculationW{ (1 / depthV0W) * w0 };
-								const float v1CalculationW{ (1 / depthV1W) * w1 };
-								const float v2CalculationW{ (1 / depthV2W) * w2 };
-								const float wInterpolated{ 1 / (v0CalculationW + v1CalculationW + v2CalculationW) };
-
-								const float w = depthV0W * w0 + depthV1W * w1 + depthV2W * w2;
-
-								auto uv0 = (triangle[0].uv / depthV0W) * w0;
-								auto uv1 = (triangle[1].uv / depthV1W) * w1;
-								auto uv2 = (triangle[2].uv / depthV2W) * w2;
-								Vector2 interpolatedUv{ uv0 + uv1 + uv2 };
-
-								interpolatedUv *= wInterpolated;
-
-								finalColor = m_pTexture->Sample(interpolatedUv);
-								//Update Color in Buffer
-								finalColor.MaxToOne();
-
-								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-									static_cast<uint8_t>(finalColor.r * 255),
-									static_cast<uint8_t>(finalColor.g * 255),
-									static_cast<uint8_t>(finalColor.b * 255));
-							}
-						}
-
-					}
-				}
-			}
-		}
-	}
-}
-
-void dae::Renderer::Render_W3_Vehicle()
-{
-	//Transform vertices into raster space (world -> camera -> NDC -> raster)
-	VertexTransformationFunction(m_Meshes);
-
-	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
-	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 
 	for (Mesh& mesh : m_Meshes)
 	{
 		int size = 0;
-		std::vector<Vertex_Out> transformedVertices{mesh.vertices_out};
+		std::vector<Vertex_Out> transformedVertices{ mesh.vertices_out };
 
 		if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
 		{
@@ -1541,7 +1394,181 @@ void dae::Renderer::Render_W3_Vehicle()
 
 			//Frustum Culling
 			if (v0.x < -1.0f || v0.x > 1.0f || v0.y < -1.0f || v0.y > 1.0f || v0.z < 0.0f || v0.z > 1.0f ||
-				v1.x < -1.0f || v1.x > 1.0f || v1.y < -1.0f || v1.y > 1.0f || v1.z < 0.0f || v1.z > 1.0f || 
+				v1.x < -1.0f || v1.x > 1.0f || v1.y < -1.0f || v1.y > 1.0f || v1.z < 0.0f || v1.z > 1.0f ||
+				v2.x < -1.0f || v2.x > 1.0f || v2.y < -1.0f || v2.y > 1.0f || v2.z < 0.0f || v2.z > 1.0f)
+			{
+				continue;
+			}
+
+
+			//Pre-calculate value for the depth buffer -> depth buffer will not be linear anymore
+			float v0InvDepth{ 1 / v0.w };
+			float v1InvDepth{ 1 / v1.w };
+			float v2InvDepth{ 1 / v2.w };
+
+			//Convert from NDC to raster space
+			//Go from [-1,1] range to [0,1] range, taking screen size into acount
+			v0.x = ((v0.x + 1) / 2.0f) * m_Width;
+			v0.y = ((1 - v0.y) / 2.0f) * m_Height;
+
+			v1.x = ((v1.x + 1) / 2.0f) * m_Width;
+			v1.y = ((1 - v1.y) / 2.0f) * m_Height;
+
+			v2.x = ((v2.x + 1) / 2.0f) * m_Width;
+			v2.y = ((1 - v2.y) / 2.0f) * m_Height;
+
+
+			//Calculate the bounding box
+			float xMin = std::min(std::min(v0.x, v1.x), v2.x);
+			float xMax = std::max(std::max(v0.x, v1.x), v2.x);
+
+			float yMin = std::min(std::min(v0.y, v1.y), v2.y);
+			float yMax = std::max(std::max(v0.y, v1.y), v2.y);
+
+			//Use the min and max values of the bounding box to loop over the pixels
+			for (int py{ (int)yMin }; py < yMax; ++py)
+			{
+				for (int px{ (int)xMin }; px < xMax; ++px)
+				{
+					ColorRGB finalColor{ 0.f, 0.f, 0.f };
+
+					//Current pixel
+					Vector2 pixel{ static_cast<float>(px) + 0.5f, static_cast<float>(py) + 0.5f };
+
+					//Check if the current pixel overlaps the triangle formed by the vertices
+					//2D cross product gives a float, based on sign we know if the point is inside the triangle
+					Vector2 edge0{ {v1.x - v0.x}, {v1.y - v0.y} };
+					Vector2 pointToEdge0{ Vector2{v0.x, v0.y }, pixel };
+					float cross0{ Vector2::Cross(edge0, pointToEdge0) };
+
+					Vector2 edge1{ {v2.x - v1.x}, {v2.y - v1.y} };
+					Vector2 pointToEdge1{ Vector2{v1.x, v1.y }, pixel };
+					float cross1{ Vector2::Cross(edge1, pointToEdge1) };
+
+					Vector2 edge2{ {v0.x - v2.x}, {v0.y - v2.y} };
+					Vector2 pointToEdge2{ Vector2{v2.x, v2.y }, pixel };
+					float cross2{ Vector2::Cross(edge2, pointToEdge2) };
+
+
+					if (cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f)
+					{
+						//Calculate the barycentric coordinates
+						//2D cross product of V1V0 and V2V0
+						float areaOfparallelogram{ Vector2::Cross(edge0, edge1) };
+
+						//Calculate the weights
+						float w0{ Vector2::Cross(edge1, pointToEdge1) / areaOfparallelogram };
+						float w1{ Vector2::Cross(edge2, pointToEdge2) / areaOfparallelogram };
+						float w2{ Vector2::Cross(edge0, pointToEdge0) / areaOfparallelogram };
+
+
+						if (w0 > 0.0f && w1 > 0.0f && w2 > 0.0f ||
+							w0 < 0.0f && w1 < 0.0f && w2 < 0.0f)
+						{
+							//Do the depth buffer test
+							float zBuffer0{ (1.0f / v0.z) * w0 };
+							float zBuffer1{ (1.0f / v1.z) * w1 };
+							float zBuffer2{ (1.0f / v2.z) * w2 };
+
+							float zBuffer{ zBuffer0 + zBuffer1 + zBuffer2 };
+							float invZBuffer{ 1.0f / zBuffer };
+
+							if (invZBuffer < 0.0f || invZBuffer > 1.0f)
+							{
+								continue;
+							}
+
+							if (invZBuffer < m_pDepthBufferPixels[px + (py * m_Width)])
+							{
+								//Write value of invZbuffer to the depthBuffer
+								m_pDepthBufferPixels[px + (py * m_Width)] = invZBuffer;
+
+								//Interpolated the depth value
+								float wBuffer0{ (1.0f / v0.w) * w0 };
+								float wBuffer1{ (1.0f / v1.w) * w1 };
+								float wBuffer2{ (1.0f / v2.w) * w2 };
+
+								float wBuffer{ wBuffer0 + wBuffer1 + wBuffer2 };
+								float wInterpolated{ 1.0f / wBuffer };
+
+								//Interpolated uv
+								Vector2 interpolatedUV{ transformedVertices[index0].uv * (w0 / v0.w) +
+														transformedVertices[index1].uv * (w1 / v1.w) +
+														transformedVertices[index2].uv * (w2 / v2.w) };
+								interpolatedUV *= wInterpolated;
+
+								//Render the pixel
+								finalColor = m_pTexture->Sample(interpolatedUV);
+								//finalColor = transformedVertices[index0].color * w0 + transformedVertices[index1].color * w1 + transformedVertices[index2].color * w2;
+
+								//Update Color in Buffer
+								finalColor.MaxToOne();
+
+								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+									static_cast<uint8_t>(finalColor.r * 255),
+									static_cast<uint8_t>(finalColor.g * 255),
+									static_cast<uint8_t>(finalColor.b * 255));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void dae::Renderer::Render_W3_Vehicle()
+{
+	//Transform vertices into raster space (world -> camera -> NDC -> raster)
+	VertexTransformationFunction(m_Meshes);
+
+	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
+	SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+
+	for (Mesh& mesh : m_Meshes)
+	{
+		//Change how the for loop advances based on the primitive topology
+		int size = 0;
+		std::vector<Vertex_Out> transformedVertices{ mesh.vertices_out };
+
+		if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+		{
+			size = (int)m_Indices.size();
+		}
+		else if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+		{
+			size = (int)m_Indices.size() - 2;
+		}
+
+		for (int i = 0; i < size;)
+		{
+			int evenIndex{ 0 };
+			if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+			{
+				evenIndex = i % 2;
+			}
+			int index0{ (int)m_Indices[i] };
+			int index1{ (int)m_Indices[i + 1 + evenIndex] };
+			int index2{ (int)m_Indices[i + 2 - evenIndex] };
+
+			//Increase i based on primitiveTopology
+			if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+			{
+				i += 3;
+			}
+			else if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+			{
+				++i;
+			}
+
+			//Calculate the points of the triangle
+			Vector4 v0{ transformedVertices[index0].position };
+			Vector4 v1{ transformedVertices[index1].position };
+			Vector4 v2{ transformedVertices[index2].position };
+
+			//Frustum Culling
+			if (v0.x < -1.0f || v0.x > 1.0f || v0.y < -1.0f || v0.y > 1.0f || v0.z < 0.0f || v0.z > 1.0f ||
+				v1.x < -1.0f || v1.x > 1.0f || v1.y < -1.0f || v1.y > 1.0f || v1.z < 0.0f || v1.z > 1.0f ||
 				v2.x < -1.0f || v2.x > 1.0f || v2.y < -1.0f || v2.y > 1.0f || v2.z < 0.0f || v2.z > 1.0f)
 			{
 				continue;
@@ -1585,112 +1612,113 @@ void dae::Renderer::Render_W3_Vehicle()
 					//Check if the current pixel overlaps the triangle formed by the vertices
 					//2D cross product gives a float, based on sign we know if the point is inside the triangle
 					Vector2 edge0{ {v1.x - v0.x}, {v1.y - v0.y} };
-					Vector2 pointToEdge0{ {pixel.x - v0.x}, {pixel.y - v0.y} };
-					float w0{ Vector2::Cross(pointToEdge0,edge0) };
+					Vector2 pointToEdge0{ Vector2{v0.x, v0.y }, pixel };
+					float cross0{ Vector2::Cross(edge0, pointToEdge0) };
 
 					Vector2 edge1{ {v2.x - v1.x}, {v2.y - v1.y} };
-					Vector2 pointToEdge1{ {pixel.x - v1.x}, {pixel.y - v1.y} };
-					float w1{ Vector2::Cross(pointToEdge1,edge1) };
+					Vector2 pointToEdge1{ Vector2{v1.x, v1.y }, pixel };
+					float cross1{ Vector2::Cross(edge1, pointToEdge1) };
 
 					Vector2 edge2{ {v0.x - v2.x}, {v0.y - v2.y} };
-					Vector2 pointToEdge2{ {pixel.x - v2.x}, {pixel.y - v2.y} };
-					float w2{ Vector2::Cross(pointToEdge2,edge2) };
+					Vector2 pointToEdge2{ Vector2{v2.x, v2.y }, pixel };
+					float cross2{ Vector2::Cross(edge2, pointToEdge2) };
 
-					if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f)
+					if (cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f)
 					{
 						//Calculate the barycentric coordinates
 						//2D cross product of V1V0 and V2V0
-						float areaOfparallelogram{ Vector2::Cross({{v0.x - v1.x}, {v0.y - v1.y}}, {{v0.x - v2.x}, {v0.y - v2.y}}) };
-						//2D cross product can return a negative number, an area can never be negative
-						//Use abs to always get a positive area
-						areaOfparallelogram = abs(areaOfparallelogram);
+						float areaOfparallelogram{ Vector2::Cross(edge0, edge1) };
 
-						w0 /= areaOfparallelogram;
-						w1 /= areaOfparallelogram;
-						w2 /= areaOfparallelogram;
+						//Calculate the weights
+						float w0{ Vector2::Cross(edge1, pointToEdge1) / areaOfparallelogram };
+						float w1{ Vector2::Cross(edge2, pointToEdge2) / areaOfparallelogram };
+						float w2{ Vector2::Cross(edge0, pointToEdge0) / areaOfparallelogram };
 
-						//Do the depth buffer test
-						float zBuffer0{ (1.0f / v0.z) * w0 };
-						float zBuffer1{ (1.0f / v1.z) * w1 };
-						float zBuffer2{ (1.0f / v2.z) * w2 };
-
-						float zBuffer{ zBuffer0 + zBuffer1 + zBuffer2 };
-						float invZBuffer{ 1.0f / zBuffer };
-
-						if (invZBuffer < 0.0f || invZBuffer > 1.0f)
+						if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f)
 						{
-							break;
-						}
+							//Do the depth buffer test
+							float zBuffer0{ (1.0f / v0.z) * w0 };
+							float zBuffer1{ (1.0f / v1.z) * w1 };
+							float zBuffer2{ (1.0f / v2.z) * w2 };
 
-						if (invZBuffer < m_pDepthBufferPixels[px+(py*m_Width)])
-						{
-							//Write value of invZbuffer to the depthBuffer
-							m_pDepthBufferPixels[px + (py * m_Width)] = invZBuffer;
+							float zBuffer{ zBuffer0 + zBuffer1 + zBuffer2 };
+							float invZBuffer{ 1.0f / zBuffer };
 
-							//Interpolated the depth value
-							float wInterpolated{ 1.0f / ((w0 / v0.w) + (w1/v1.w) + (w2/v2.w)) };
+							if (invZBuffer < 0.0f || invZBuffer > 1.0f)
+							{
+								break;
+							}
 
-							//Interpolated colour
-							ColorRGB interpolatedColour{ transformedVertices[index0].color * (w0 / v0.w) +
-														transformedVertices[index1].color * (w1 / v1.w) +
-														transformedVertices[index2].color * (w2 / v2.w) };
-							interpolatedColour *= wInterpolated;
+							if (invZBuffer < m_pDepthBufferPixels[px + (py * m_Width)])
+							{
+								//Write value of invZbuffer to the depthBuffer
+								m_pDepthBufferPixels[px + (py * m_Width)] = invZBuffer;
 
+								//Interpolated the depth value
+								float wInterpolated{ 1.0f / ((w0 / v0.w) + (w1 / v1.w) + (w2 / v2.w)) };
 
-							//Interpolated uv
-							Vector2 interpolatedUV{ transformedVertices[index0].uv * (w0 / v0.w) +
-													transformedVertices[index1].uv * (w1 / v1.w) +
-													transformedVertices[index2].uv * (w2 / v2.w) };
-							interpolatedUV *= wInterpolated;
-
-							interpolatedUV.x = Clamp(interpolatedUV.x, 0.f, 1.f);
-							interpolatedUV.y = Clamp(interpolatedUV.y, 0.f, 1.f);
-
-
-							//Interpolated normal
-							Vector3 interpolatedNormal{ transformedVertices[index0].normal * (w0 / v0.w) +
-														transformedVertices[index1].normal * (w1 / v1.w) +
-														transformedVertices[index2].normal * (w2 / v2.w) };
-							interpolatedNormal *= wInterpolated;
-							//Normalize direction vectors!
-							interpolatedNormal.Normalize();
+								//Interpolated colour
+								ColorRGB interpolatedColour{ transformedVertices[index0].color * (w0 / v0.w) +
+															transformedVertices[index1].color * (w1 / v1.w) +
+															transformedVertices[index2].color * (w2 / v2.w) };
+								interpolatedColour *= wInterpolated;
 
 
-							//Interpolated tangent
-							Vector3 interpolatedTangent{ transformedVertices[index0].tangent * (w0 / v0.w) +
-														transformedVertices[index1].tangent * (w1 / v1.w) +
-														transformedVertices[index2].tangent * (w2 / v2.w)};
-							interpolatedTangent *= wInterpolated;
-							//Normalize direction vectors!
-							interpolatedTangent.Normalize();
+								//Interpolated uv
+								Vector2 interpolatedUV{ transformedVertices[index0].uv * (w0 / v0.w) +
+														transformedVertices[index1].uv * (w1 / v1.w) +
+														transformedVertices[index2].uv * (w2 / v2.w) };
+								interpolatedUV *= wInterpolated;
+
+								/*interpolatedUV.x = Clamp(interpolatedUV.x, 0.f, 1.f);
+								interpolatedUV.y = Clamp(interpolatedUV.y, 0.f, 1.f);*/
 
 
-							//Interpolated viewDirection
-							Vector3 interpolatedViewDirection{ transformedVertices[index0].viewDirection * (w0 / v0.w) +
-																transformedVertices[index1].viewDirection * (w1 / v1.w) +
-																transformedVertices[index2].viewDirection * (w2 / v2.w) };
-							interpolatedViewDirection *= wInterpolated;
-							//Normalize direction vectors!
-							interpolatedViewDirection.Normalize();
+								//Interpolated normal
+								Vector3 interpolatedNormal{ transformedVertices[index0].normal * (w0 / v0.w) +
+															transformedVertices[index1].normal * (w1 / v1.w) +
+															transformedVertices[index2].normal * (w2 / v2.w) };
+								interpolatedNormal *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedNormal.Normalize();
 
 
-							Vertex_Out pixelInfo{};
-							pixelInfo.position = Vector4{ pixel.x, pixel.y, invZBuffer, wInterpolated };
-							pixelInfo.uv = interpolatedUV;
-							pixelInfo.normal = interpolatedNormal;
-							pixelInfo.tangent = interpolatedTangent;
-							pixelInfo.viewDirection = interpolatedViewDirection;
+								//Interpolated tangent
+								Vector3 interpolatedTangent{ transformedVertices[index0].tangent * (w0 / v0.w) +
+															transformedVertices[index1].tangent * (w1 / v1.w) +
+															transformedVertices[index2].tangent * (w2 / v2.w) };
+								interpolatedTangent *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedTangent.Normalize();
 
-							//Render the pixel
-							finalColor = RenderPixelInfo(pixelInfo);
 
-							//Update Color in Buffer
-							finalColor.MaxToOne();
+								//Interpolated viewDirection
+								Vector3 interpolatedViewDirection{ transformedVertices[index0].viewDirection * (w0 / v0.w) +
+																	transformedVertices[index1].viewDirection * (w1 / v1.w) +
+																	transformedVertices[index2].viewDirection * (w2 / v2.w) };
+								interpolatedViewDirection *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedViewDirection.Normalize();
 
-							m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-								static_cast<uint8_t>(finalColor.r * 255),
-								static_cast<uint8_t>(finalColor.g * 255),
-								static_cast<uint8_t>(finalColor.b * 255));
+
+								Vertex_Out pixelInfo{};
+								pixelInfo.position = Vector4{ pixel.x, pixel.y, invZBuffer, wInterpolated };
+								pixelInfo.uv = interpolatedUV;
+								pixelInfo.normal = interpolatedNormal;
+								pixelInfo.tangent = interpolatedTangent;
+								pixelInfo.viewDirection = interpolatedViewDirection;
+
+								//Render the pixel
+								finalColor = RenderPixelInfo(pixelInfo);
+
+								//Update Color in Buffer
+								finalColor.MaxToOne();
+
+								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+									static_cast<uint8_t>(finalColor.r * 255),
+									static_cast<uint8_t>(finalColor.g * 255),
+									static_cast<uint8_t>(finalColor.b * 255));
+							}
 						}
 					}
 				}
@@ -1783,8 +1811,8 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 	ColorRGB diffuse = m_pVehicleDiffuse->Sample(vertexOut.uv);
 
 	//Normal map
-	Vector3 biNormal{ Vector3::Cross(vertexOut.normal, vertexOut.tangent).Normalized()};
-	Matrix tangentAxisSpace{ Matrix{vertexOut.tangent, biNormal, vertexOut.normal, {0,0,0}}};
+	Vector3 biNormal{ Vector3::Cross(vertexOut.normal, vertexOut.tangent).Normalized() };
+	Matrix tangentAxisSpace{ Matrix{vertexOut.tangent, biNormal, vertexOut.normal, {0,0,0}} };
 
 	ColorRGB normalColour{ m_pVehicleNormal->Sample(vertexOut.uv) };
 	Vector3 normal{ 2.0f * normalColour.r - 1.0f, 2.0f * normalColour.g - 1.0f, 2.0f * normalColour.b - 1.0f };
@@ -1824,7 +1852,7 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 		finalColour = totalLight * (diffuse + phong + ambient) * lambertCosine;
 	}
 
-		break;
+	break;
 	case dae::Renderer::LightMode::Diffuse:
 
 	{
@@ -1832,7 +1860,7 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 		finalColour = totalLight * diffuseColour * lambertCosine;
 	}
 
-		break;
+	break;
 	case dae::Renderer::LightMode::Specular:
 
 	{
@@ -1845,14 +1873,14 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 		finalColour = totalLight * phong * lambertCosine;
 	}
 
-		break;
+	break;
 	case dae::Renderer::LightMode::ObservedArea:
 
 	{
 		finalColour = { lambertCosine,lambertCosine,lambertCosine };
 	}
 
-		break;
+	break;
 	default:
 		break;
 	}
