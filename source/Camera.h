@@ -34,7 +34,7 @@ namespace dae
 		Matrix viewMatrix{};
 		Matrix projectionMatrix{};
 
-		float movementSpeed{ 5.f };
+		float movementSpeed{ 10.f };
 
 		float aspectRatio{};
 

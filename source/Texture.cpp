@@ -49,6 +49,6 @@ namespace dae
 
 		//change color from range 0,255 to 0,1
 		ColorRGB rgb2{ rgb.r, rgb.g, rgb.b };
-		return rgb2 / 255;
+		return rgb2 / 255.0f;
 	}
 }

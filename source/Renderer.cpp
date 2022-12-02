@@ -17,7 +17,8 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	, m_Vertices{}
 	, m_Indices{}
 	, m_RotationMatrix{}
-	, m_Lightmode{ LightMode::Combined }
+	, m_Shadingmode{ ShadingMode::Combined }
+	, m_IsNormalMapEnabled{true}
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
@@ -1803,7 +1804,7 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 
 	Vector3 lightDirection{ 0.577f,-0.577f,0.577f };
 	float lightIntensity{ 7.0f };
-	ColorRGB totalLight{ ColorRGB{1.0f,1.0f,1.0f} *lightIntensity };
+	ColorRGB totalLight{ ColorRGB{1.0f,1.0f,1.0f} * lightIntensity };
 	float shininess{ 25.0f };
 	ColorRGB ambient{ 0.025f,0.025f,0.025f };
 
@@ -1816,7 +1817,7 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 
 	ColorRGB normalColour{ m_pVehicleNormal->Sample(vertexOut.uv) };
 	Vector3 normal{ 2.0f * normalColour.r - 1.0f, 2.0f * normalColour.g - 1.0f, 2.0f * normalColour.b - 1.0f };
-	normal = tangentAxisSpace.TransformPoint(normal);
+	normal = tangentAxisSpace.TransformVector(normal);
 	normal.Normalize();
 
 	//Glossy map
@@ -1834,47 +1835,47 @@ ColorRGB Renderer::RenderPixelInfo(const Vertex_Out& vertexOut)
 		return finalColour;
 	}
 
-	switch (m_Lightmode)
+	switch (m_Shadingmode)
 	{
-	case dae::Renderer::LightMode::Combined:
+	case dae::Renderer::ShadingMode::Combined:
 
 	{
 		ColorRGB phongExponent{ gloss * shininess };
 
-		float dotResult{ (std::max(0.f, Vector3::Dot(vertexOut.normal,lightDirection))) };
-		Vector3 reflect{ lightDirection - (2.0f * (dotResult * vertexOut.normal)) };
+		Vector3 reflect{ Vector3::Reflect(-lightDirection, normal)};
 		float cosAlpha{ std::max(0.0f, Vector3::Dot(reflect, vertexOut.viewDirection)) };
 		ColorRGB phong{ specular * std::powf(cosAlpha, phongExponent.r) };
-		//1.0f = kd, diffuse = cd
-		ColorRGB rho{ diffuse };
-		ColorRGB diffuseColour{ rho / M_PI };
 
-		finalColour = totalLight * (diffuse + phong + ambient) * lambertCosine;
+		ColorRGB rho{ diffuse };
+		ColorRGB diffuseColour{ rho / PI };
+
+		finalColour = lambertCosine * totalLight * diffuseColour + (phong + ambient);
 	}
 
 	break;
-	case dae::Renderer::LightMode::Diffuse:
+	case dae::Renderer::ShadingMode::Diffuse:
 
 	{
-		ColorRGB diffuseColour{ diffuse * (1.0f / (float)M_PI) };
+		ColorRGB rho{ diffuse };
+		ColorRGB diffuseColour{ rho / PI };
 		finalColour = totalLight * diffuseColour * lambertCosine;
 	}
 
 	break;
-	case dae::Renderer::LightMode::Specular:
+	case dae::Renderer::ShadingMode::Specular:
 
 	{
-		auto phongExponent{ gloss * shininess };
+		ColorRGB phongExponent{ gloss * shininess };
 
-		auto reflect{ lightDirection - (2.0f * (Vector3::Dot(vertexOut.normal,lightDirection) * vertexOut.normal)) };
-		auto cosAlpha{ std::max(0.0f, Vector3::Dot(reflect, vertexOut.viewDirection)) };
-		auto phong{ specular * std::powf(cosAlpha, phongExponent.r) };
+		Vector3 reflect{ Vector3::Reflect(-lightDirection, normal) };
+		float cosAlpha{ std::max(0.0f, Vector3::Dot(reflect, vertexOut.viewDirection)) };
+		ColorRGB phong{ specular * std::powf(cosAlpha, phongExponent.r) };
 
 		finalColour = totalLight * phong * lambertCosine;
 	}
 
 	break;
-	case dae::Renderer::LightMode::ObservedArea:
+	case dae::Renderer::ShadingMode::ObservedArea:
 
 	{
 		finalColour = { lambertCosine,lambertCosine,lambertCosine };
@@ -1901,6 +1902,36 @@ float Renderer::GetTriangleEdge(const Vector3& a, const Vector3& b, const Vector
 bool Renderer::SaveBufferToImage() const
 {
 	return SDL_SaveBMP(m_pBackBuffer, "Rasterizer_ColorBuffer.bmp");
+}
+
+void Renderer::ToggleRotation()
+{
+}
+
+void Renderer::ToggleNormalMap()
+{
+	m_IsNormalMapEnabled = !m_IsNormalMapEnabled;
+}
+
+void Renderer::SwitchShadingMode()
+{
+	switch (m_Shadingmode)
+	{
+	case Renderer::ShadingMode::Combined:
+		m_Shadingmode = ShadingMode::ObservedArea;
+		break;
+	case Renderer::ShadingMode::ObservedArea:
+		m_Shadingmode = ShadingMode::Diffuse;
+		break;
+	case Renderer::ShadingMode::Diffuse:
+		m_Shadingmode = ShadingMode::Specular;
+		break;
+	case Renderer::ShadingMode::Specular:
+		m_Shadingmode = ShadingMode::Combined;
+		break;
+	default:
+		break;
+	}
 }
 
 bool Renderer::IsPointInTriangle(const std::vector<Vector3>& screenTriangleCoordinates, int pixelX, int pixelY)

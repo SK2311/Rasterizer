@@ -33,13 +33,17 @@ namespace dae
 
 		bool SaveBufferToImage() const;
 
+		void ToggleRotation();
+		void ToggleNormalMap();
+		void SwitchShadingMode();
+
 	private:
-		enum class LightMode
+		enum class ShadingMode
 		{
 			Combined,
+			ObservedArea,
 			Diffuse,
-			Specular,
-			ObservedArea
+			Specular
 		};
 
 		SDL_Window* m_pWindow{};
@@ -69,7 +73,9 @@ namespace dae
 
 		Matrix m_RotationMatrix;
 
-		LightMode m_Lightmode;
+		ShadingMode m_Shadingmode;
+
+		bool m_IsNormalMapEnabled;
 
 		void Render_W1_Gradient();
 		void Render_W1_Part1();
